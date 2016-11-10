@@ -457,17 +457,47 @@ function createEnv(parent){
     return {
         name: Math.floor((Math.random() * 1000000)+1),
         parent: parent,     //This is an env object
-        bindings:           //EDIT: Should not contain parent bindings, only locals. Parents will be handled later
+        bindings:  test         //EDIT: Should not contain parent bindings, only locals. Parents will be handled later
     }
 }
 
 function lookup(name,env){
-
+    //check local env
+    for(var sbinding in env.bindings){
+        if (!sbinding.localeCompare(name)){
+            return env.bindings[sbinding];
+        }
+    }
+    //check parent
+    if(env.parent == null){
+        return null;
+    }
+    return lookup(name,env.parent);
 }
 
 function evalWML(ast,env){
     //Evaluate a list of OUTER nodes, static scoping
 }
 
-function
+var e1 = {
+    name: 125435,
+    parent: null,
+    bindings: {
+        a: "test",
+        b: "test2",
+        c: "test3"
+    }
+}
+
+var e2 = {
+    name: 369549,
+    parent: e1,
+    bindings: {
+        d: "test4"
+    }
+}
+
+console.log(lookup("d",e2));
+
+
 
