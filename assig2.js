@@ -436,6 +436,7 @@ function parseTParam(s) {
 
 //  -----------------Assignment start----------------
 
+// parseOuter(s)
 
 // Question 1
 // Create environment
@@ -455,11 +456,18 @@ function parseTParam(s) {
 function createEnv(parent){
     return {
         name: Math.floor((Math.random() * 1000000)+1),
-        
+        parent: parent,     //This is an env object
+        bindings:           //EDIT: Should not contain parent bindings, only locals. Parents will be handled later
     }
 }
 
 function lookup(name,env){
 
 }
+
+function evalWML(ast,env){
+    //Evaluate a list of OUTER nodes, static scoping
+}
+
+function
 
