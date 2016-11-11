@@ -1,0 +1,19 @@
+{: fct1 | x | y | body {{{x}}} :}
+{{ fct1 | ydob }}
+
+should return:
+body ydob
+
+templatedef:
+dtext
+dparams
+
+defparams:
+dtext
+next
+
+dtext:
+INNERDTEXT
+templateInvoc
+TParam
+next

@@ -518,15 +518,16 @@ function evalWML(ast,env){
 
 function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env (where is was defined)}
    
-    var e = createEnv(env);
-    e.bindings[ast.dtext.INNERDTEXT] = {
+   //add the function to parent env
+    env.bindings[ast.dtext.INNERDTEXT] = {    //bind the function
         params: "anarray",
         body: "body",
         env: "e"
     }
+   
 
          //Always return empty string
-  return "";    //How can tdef return a string ? / How is passed the env
+  return "";    //How can tdef return a string ? / How is passed the env    ->  write to parent env
 }
 function evalTemplateInvoc(ast,env){
   return "A string";
