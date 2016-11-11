@@ -1,0 +1,64 @@
+some outer text
+-----------------
+{: definition | body :}
+-----------------
+{:definition|arg1|arg2| body :}
+-----------------
+{: definition | arg1 | arg2 | body {{{arg1}}} to {{{arg2}}} to {{{arg3:}}} :}
+-----------------
+{{ invocation }}
+-----------------
+{{{invocatio55n}}
+-----------------
+{{ invocation | arg1 }}
+-----------------
+{{invocation||||||}}
+-----------------
+{:definition|:}
+-----------------
+{:definition||||:}
+-----------------
+{:|:}
+-----------------
+{{ invocation{{moreinvocation|foo}} | arg1{{bar|{{ping{{{param}}}}}}} }}
+-----------------
+{{ invocation{:definitio::n|body{{moreinvocation|arg}}}back to body, started with an extra '}' :}
+| arg
+
+| arg2
+
+:} still arg2
+}}
+-----------------
+
+
+{: 
+a definition { { : } nothing exciting, still the template name! } { : }
+| a parameter
+| another parameter
+| 
+a body, starting with whitespace.  
+: } still the body!
+:} ok, back to outer now
+
+
+-----------------
+
+{:count
+|start
+|stop
+|{{#ifeq
+   |{{#expr
+      |{{{start}}}<{{{stop}}}}}
+      |true
+      |{{{start}}} {{count|{{#expr|{{{start}}}+1}}|{{{stop}}}}}}}:}
+{{count|1|10}}
+
+-----------------
+{:fact|n|{{#ifeq|{{#expr|{{{n}}}==0}}|true|1|{{#expr|{{{n}}}*{{fact|{{#expr|{{{n}}}-1}}}}}}}}:}
+
+{:f
+  |x
+  |y
+  |{:a||{{#expr|{{{x}}}+1}}:}{:b||{{#expr|{{{y}}}+1}}:}{{#expr|{{a}}+{{b}}}}:}
+{{f|2|3}}=7

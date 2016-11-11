@@ -433,6 +433,33 @@ function parseTParam(s) {
     return obj;
 }
 
+//  -----------------Helpers-------------------------
+
+function printASTIndent(node, tabVal){
+	if(typeof tabVal === 'undefined'){
+		tabVal = 0;
+	}
+	var tabs = "";
+	for(var i = 0; i < tabVal; i++){
+		tabs= tabs.concat("	");
+	}
+	var result = "";
+	for(var param in node){
+		if (node.hasOwnProperty(param)){
+			var curNode;
+			if(typeof node[param] === 'object' && node[param] !== null){
+				curNode ='\n' + printASTIndent(node[param], tabVal+1);
+				result +=tabs + param +":" + curNode;
+
+			}
+			else{
+				curNode = node[param];
+				result +=tabs + param +":" + curNode + '\n';
+			}
+		}
+	}
+	return result;
+}
 
 //  -----------------Assignment start----------------
 
@@ -453,15 +480,24 @@ function parseTParam(s) {
                         searches through the given environment and then parents, returning null if no binding is found
 */
 
+/*
+Binding closure template:
+e = createEnv(parent)
+return function{
+    this can access e
+}
+*/
+
 function createEnv(parent){
     return {
         name: Math.floor((Math.random() * 1000000)+1),
         parent: parent,     //This is an env object
-        bindings:  test         //EDIT: Should not contain parent bindings, only locals. Parents will be handled later
+        bindings:  {}         //init an empty binding set
     }
 }
 
-function lookup(name,env){
+
+function lookup(name,env){      //Done
     //check local env
     for(var sbinding in env.bindings){
         if (!sbinding.localeCompare(name)){
@@ -477,8 +513,41 @@ function lookup(name,env){
 
 function evalWML(ast,env){
     //Evaluate a list of OUTER nodes, static scoping
+    return "A string";
 }
 
+function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env (where is was defined)}
+   
+    var e = createEnv(env);
+    e.bindings[ast.dtext.INNERDTEXT] = {
+        params: "anarray",
+        body: "body",
+        env: "e"
+    }
+
+         //Always return empty string
+  return "";    //How can tdef return a string ? / How is passed the env
+}
+function evalTemplateInvoc(ast,env){
+  return "A string";
+}
+function evalTemplateArg(ast,env){
+  return "A string";
+}
+function evalInnerText(ast,env){
+  return "A string";
+}
+function evalDefinitionText(ast,env){
+  return "A string";
+}
+function evalDefinitionParam(ast,env){
+  return "A string";
+}
+function evalTemplateParam(ast,env){
+    //This node contain only a terminal term, so we can return it dierectly
+  return ast.pname;
+}
+/*
 var e1 = {
     name: 125435,
     parent: null,
@@ -498,6 +567,13 @@ var e2 = {
 }
 
 console.log(lookup("d",e2));
+*/
+
+var teststr = "{: definition | arg1 | body {{{arg1}}} :}";
+
+var ast = parseOuter(teststr);
+console.log(printASTIndent(ast));
+
 
 
 

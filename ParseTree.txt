@@ -1,0 +1,25 @@
+function printASTIndent(node, tabVal){
+	if(typeof tabVal === 'undefined'){
+		tabVal = 0;
+	}
+	var tabs = "";
+	for(var i = 0; i < tabVal; i++){
+		tabs= tabs.concat("	");
+	}
+	var result = "";
+	for(var param in node){
+		if (node.hasOwnProperty(param)){
+			var curNode;
+			if(typeof node[param] === 'object' && node[param] !== null){
+				curNode ='\n' + printASTIndent(node[param], tabVal+1);
+				result +=tabs + param +":" + curNode;
+
+			}
+			else{
+				curNode = node[param];
+				result +=tabs + param +":" + curNode + '\n';
+			}
+		}
+	}
+	return result;
+}
