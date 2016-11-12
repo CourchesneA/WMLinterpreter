@@ -512,41 +512,88 @@ function lookup(name,env){      //Done
 }
 
 function evalWML(ast,env){
-    //Evaluate a list of OUTER nodes, static scoping
-    return "A string";
+    
+}
+
+function evalOuter(ast,env){
+    if(ast == null){    //Return empty string if no more OUTERTEXT
+        return "";
+    }
+    if (env == null || env == undefined) {
+        console.log("Created new env");
+        env = createEnv(env);   //If no environment was passed, create a new one
+    }
+
+    if(ast.templateinvocation != null){
+        return evalTemplateInvoc(ast.templateinvocation,env) + evalOuter(ast.next,env);
+        //eval a template invoc
+    }else if(ast.templatedef != null){
+        return evalTemplateDef(ast.parseTemplateDef,env) + evalOuter(ast.next,env);
+        //eval a template def
+    }
 }
 
 function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env (where is was defined)}
+    if(ast == null){
+        return null;
+    }
    
    //add the function to parent env
     env.bindings[ast.dtext.INNERDTEXT] = {    //bind the function
         params: "anarray",
         body: "body",
-        env: "e"
+        env: env        //Return the environment passed, in which the function was defined
     }
    
 
          //Always return empty string
   return "";    //How can tdef return a string ? / How is passed the env    ->  write to parent env
 }
-function evalTemplateInvoc(ast,env){
-  return "A string";
+function evalTemplateInvoc(ast, env) {
+    if(ast == null){
+        return null;
+    }
+    return "A string";
 }
-function evalTemplateArg(ast,env){
-  return "A string";
+function evalTemplateArg(ast, env) {
+    if(ast == null){
+        return null;
+    }
+    return "A string";
 }
-function evalInnerText(ast,env){
-  return "A string";
+function evalInnerText(ast, env) {
+    if(ast == null){
+        return null;
+    }
+    return "A string";
 }
-function evalDefinitionText(ast,env){
-  return "A string";
+function evalDefinitionText(ast, env) {
+    if(ast == null){
+        return null;
+    }
+    if(ast.INNERDTEXT != null){
+        return ast.INNERDTEXT;      //There is plain text only so we can return it
+    }else if( templateinvocation != null ){
+
+    }else if( templatedef != null ){
+
+    }else if( tparam != null){
+
+    }
+    return "A string";
 }
-function evalDefinitionParam(ast,env){
-  return "A string";
+function evalDefinitionParam(ast, env) {
+    if(ast == null){
+        return null;
+    }
+    return "A string";
 }
-function evalTemplateParam(ast,env){
+function evalTemplateParam(ast, env) {
+    if(ast == null){
+        return null;
+    }
     //This node contain only a terminal term, so we can return it dierectly
-  return ast.pname;
+    return ast.pname;
 }
 /*
 var e1 = {
@@ -570,9 +617,10 @@ var e2 = {
 console.log(lookup("d",e2));
 */
 
-var teststr = "{: definition | arg1 | body {{{arg1}}} :}";
-
+var teststr = "{: definition | arg1 | body :}";
+//var teststr = "some outer text\n-----------------\n{: definition | body :}\n-----------------\n{:definition|arg1|arg2| body :}\n-----------------"
 var ast = parseOuter(teststr);
+console.log("Input string: "+teststr);
 console.log(printASTIndent(ast));
 
 
