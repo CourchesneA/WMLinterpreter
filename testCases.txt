@@ -1,0 +1,41 @@
+//DYNAMIC vs. STATIC scoping:
+"{:foo|x|{:funcOne|{{{x}}}:}{:funcTwo|x|{{funcOne}}:}{{funcTwo|dynamic}}:}{{foo|static}}"; //should print out "static" if static scoping, or "dynamic" if dynamic scoping.
+
+//BASIC TEST CASES:
+"hey, this works!";//outertext, should print out: "hey, this works!"
+"hey, {:foo|congrats!:}{:bar| This works:}{{foo}}{{bar}}!"; //defines two functions, and invokes them. Should print out: "hey, congrats! This works!"
+
+
+//NESTED FUNCTION CALLS:
+"{:bar|x|{:foo|{{{x}}}:}{{foo}}:}{{bar|This works!}}"; //define a function within another function, and must search the environment chain for the value of a parameter. Should print out: "This works!"
+"{:foo|a|{{{a}}}:}{:bar|x|hello,{{foo|{{{x}}} }}:}{{bar|{:sub|a|{{{a}}}:} {{foo|,what's up }} {{sub|dude}}}}"; //calling a function within a function, and defining a function within another function, and then calling that function. Should print out: "hello, what's up dude"
+
+//#if:
+"{{#if|a|true|false}}"//IF: basic if-case. should print out "true".
+"{{#if|{:bar|:}{{bar}}|true|false}}"//IF: Define and invoke a function within the conditions case. Should print out "false".
+
+//#ifeq:
+"{:foo|yay! Nested functions also work!:}{{#if|{:bar|:}{{bar}}|true|{{foo}}}}"//IF: same as previous test-case, except it invokes a function that was declared in the parent environment. Shoul print "yay! Nested functions also work!"
+"{{#ifeq|arg1|arg2|true|false}}" //IFEQ: checks if arg1 equals arg2, as a literal string. Should print out "false".
+"{:bar|hi!:}{{#ifeq|{{bar}}|{{bar}}|true|false}}"//IFEQ: checks if the invocation of bar has the same result as the other invocation of bar. Should print out "true".
+
+//#expr:
+"{{#expr|3*4+3}}";//simple expr. Should print out: "15".
+"{:times|x|y|{{#expr|{{{x}}}*{{{y}}} }} :}{{times|3|5}}" //invokes a function that contains an expr. Should print out "15".
+
+//#ifeq and #expr combined:
+"{:fact|n|{{#ifeq|{{#expr|{{{n}}}==0}}|true|1|{{#expr|{{{n}}}*{{fact|{{#expr|{{{n}}}-1}}}}}}}}:}{{fact|3}}"; //COMBO: took this from the prof. Should print out "6". It's the factorial function.
+
+//CLOSURES:
+"{{ {:`|beep:} }}"; //invoking a closure with no argument. Should print out "beep"
+"{:foo|x|{{ {{{x}}}|correctArg}}:}{{foo|{:`|y|{{{y}}}:}}}"; //invoking a closure with an argument. Should print out "correctArg"
+"{:`foo|x|{{{x}}}:}{{foo|bar}}"; //invoking a function that was also a closure. Should print out stringified version and "bar". 
+"{{ {:`foo|beep:} }} {{foo}}"; //invoking a function that was also a closure and invoking the stringified version. Should be "beep beep".
+"{:foo|y|z| {{ {{{y}}} }} {{x}}:}{{foo|{:`|output:} }}"; //invoking a closure, and invokes an undefined function. Should print out: "output{{x}}"
+
+//UNDEFINED FUNCTIONS:
+"{{a}}"; //invokes a function that hasn't been defined. Should print "{{a}}"
+"{{a|b|{:bar|eval:}{{bar}}}}"; //invokes a function that hasn't been defined, but with arguments AND an invoked function. Correct answer can either be: "{{a}}", or "{{a|b|eval}}".
+
+//A combination of some of the above:
+"{:greaterThan|x|y|{{#ifeq|{{#expr|{{{x}}}>{{{y}}} }}|true|{{{x}}}|{{{y}}} }}:}{:square|x|{:mult|x|y|{{#expr|{{{x}}}*{{{y}}} }}:}{{mult|{{{x}}}|{{{x}}} }}:}{:squareOfGreater|x|z|{{square|{{greaterThan|{{{x}}}|{{{z}}} }} }}:}The square of the greater of these two numbers (4 and 10) is: {{squareOfGreater|4|10}}"; //This will square the largest of the two values. Should print out: " The square of the greater of these two numbers (4 and 10) is: 100".
