@@ -535,13 +535,16 @@ function evalOuter(ast,env){
 
 function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env (where is was defined)}
     if(ast == null){
-        return null;
+        return "";
     }
+    //Evaluate the name
+    //Evaluate all the params
+    //Extract the body
    
    //add the function to parent env
     env.bindings[ast.dtext.INNERDTEXT] = {    //bind the function
         params: "anarray",
-        body: "body",
+        body: "AST",
         env: env        //Return the environment passed, in which the function was defined
     }
    
@@ -551,49 +554,73 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
 }
 function evalTemplateInvoc(ast, env) {
     if(ast == null){
-        return null;
+        return "";
     }
+    //Create a new environment
+    var newenv = createEnv(env);
+    //eval the name
+    //eval each of the args
+    //lookup the name in env   ->   Find list of params and create bindings to args -> new env with param:args bindings we now execute body in   -> Eval body in it
+    
     return "A string";
 }
 function evalTemplateArg(ast, env) {
     if(ast == null){
-        return null;
+        return "";
     }
-    return "A string";
+    //We should first evaluate the argument, then search in the env
+    return lookup(evalInnerText(ast.itext,env)+evalTemplateArg(ast.next,env),env)
 }
 function evalInnerText(ast, env) {
     if(ast == null){
-        return null;
+        return "";
     }
+
+    if(ast.INNERTEXT != null){
+        return ast.INNERTEXT + evalInnerText(ast.next,env);
+    }else if (ast.templateinvocation != null){
+        return evalTemplateInvoc(ast.templateinvocation,env) + evalInnerText(ast.next,env);
+    }else if (ast.templatedef != null){
+        return evalTemplateDef(ast.templatedef,env) + evalInnerText(ast.next,env);
+    }else if (ast.tparm != null){
+        return evalTemplateParam(ast.tparam,env) + evalInnerText(ast.next,env);
+    }
+
     return "A string";
 }
 function evalDefinitionText(ast, env) {
     if(ast == null){
-        return null;
+        return "";
     }
-    if(ast.INNERDTEXT != null){
-        return ast.INNERDTEXT;      //There is plain text only so we can return it
-    }else if( templateinvocation != null ){
 
-    }else if( templatedef != null ){
-
-    }else if( tparam != null){
-
+    if (ast.INNERDTEXT != null) {
+        return ast.INNERDTEXT + evalDefinitionText(ast.next, env);      //There is plain text only so we can return it
+    } else if (templateinvocation != null) {
+        return evalTemplateInvoc(ast.templateinvocation,env) + evalDefinitionText(ast.next, env);
+    } else if (templatedef != null) {
+        return eval(ast.templatedef,env) + evalDefinitionText(ast.next, env);
+    } else if (tparam != null) {
+        return eval(ast.tparam,env) + evalDefinitionText(ast.next, env);
     }
+
     return "A string";
 }
 function evalDefinitionParam(ast, env) {
     if(ast == null){
-        return null;
+        return "";
     }
+
+    //only possibility is dtext
+    return evalDefinitionText(ast.dtext,env) + evalDefinitionParam(ast.next,env);
+
     return "A string";
 }
-function evalTemplateParam(ast, env) {
+function evalTemplateParam(ast, env) {  //The function that call it should contain the param binding
     if(ast == null){
-        return null;
+        return "";
     }
-    //This node contain only a terminal term, so we can return it dierectly
-    return ast.pname;
+
+    return lookup(ast.pname,env);   //Lookup the param in the env
 }
 /*
 var e1 = {
@@ -617,12 +644,21 @@ var e2 = {
 console.log(lookup("d",e2));
 */
 
-var teststr = "{: definition | arg1 | body :}";
+/*var teststr = "{: definition | arg1 | body {{{arg1}}} :}";
 //var teststr = "some outer text\n-----------------\n{: definition | body :}\n-----------------\n{:definition|arg1|arg2| body :}\n-----------------"
 var ast = parseOuter(teststr);
 console.log("Input string: "+teststr);
 console.log(printASTIndent(ast));
 
+var teststr2 = "{{ definition | ydob }}"
+var ast2 = parseOuter(teststr2);
+console.log("Input string 2: "+teststr2);
+console.log(printASTIndent(ast2));
+*/
 
-
+var classtest = "{: hello | you | Hi there <b> {{{ you }}}} </b> :} \n {{ hello | Runpelstiltskin }}"
+var classast = parseOuter(classtest);
+console.log("Input string: "+classtest);
+console.log(printASTIndent(classast));
+console.log(evalWML(classast,env));
 
