@@ -489,6 +489,9 @@ return function{
 */
 
 function createEnv(parent){
+    if(parent == undefined){
+        parent = null;
+    }
     return {
         name: Math.floor((Math.random() * 1000000)+1),
         parent: parent,     //This is an env object
@@ -520,15 +523,15 @@ function evalOuter(ast,env){
         return "";
     }
     if (env == null || env == undefined) {
-        console.log("Created new env");
         env = createEnv(env);   //If no environment was passed, create a new one
+        console.log("Created new env");
     }
 
     if(ast.templateinvocation != null){
         return evalTemplateInvoc(ast.templateinvocation,env) + evalOuter(ast.next,env);
         //eval a template invoc
     }else if(ast.templatedef != null){
-        return evalTemplateDef(ast.parseTemplateDef,env) + evalOuter(ast.next,env);
+        return evalTemplateDef(ast.templatedef,env) + evalOuter(ast.next,env);
         //eval a template def
     }
 }
@@ -537,18 +540,34 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
     if(ast == null){
         return "";
     }
-    //Evaluate the name
-    //Evaluate all the params
-    //Extract the body
-   
+    //Evaluate the name, Evaluate all the params, Extract the body
+    var params = [];
+    function getBody(ast){  //Take a dparams node and return the dtext of the last linked dparams node
+        if(ast == null){
+            console.log("Error occured, no body found");
+            return null;    //Error occured
+        }
+        if(ast.name == "dparams" && ast.next == null && ast.dtext != null){
+            return ast.dtext;
+        }else{
+            return getBody(ast.next);
+        }
+    }
+    function registerParams(ast){
+        if(ast.next == null){
+            return;     //This is the body, we dont want to register it
+        }
+        params.push(evalDefinitionText(ast.dtext,env)); //Evaluate the param and register it
+        registerParams(ast.next)    //register next params
+    }
+    var funcname = evalDefinitionText(ast.dtext,env);   // Evaluate the name
+    registerParams(ast.dparams);
    //add the function to parent env
-    env.bindings[ast.dtext.INNERDTEXT] = {    //bind the function
-        params: "anarray",
-        body: "AST",
+    env.bindings[funcname] = {    //bind the function
+        params: params,
+        body: getBody(ast.dparams),
         env: env        //Return the environment passed, in which the function was defined
     }
-   
-
          //Always return empty string
   return "";    //How can tdef return a string ? / How is passed the env    ->  write to parent env
 }
@@ -561,7 +580,7 @@ function evalTemplateInvoc(ast, env) {
     //eval the name
     //eval each of the args
     //lookup the name in env   ->   Find list of params and create bindings to args -> new env with param:args bindings we now execute body in   -> Eval body in it
-    
+
     return "A string";
 }
 function evalTemplateArg(ast, env) {
@@ -656,9 +675,18 @@ console.log("Input string 2: "+teststr2);
 console.log(printASTIndent(ast2));
 */
 
+/*
 var classtest = "{: hello | you | Hi there <b> {{{ you }}}} </b> :} \n {{ hello | Runpelstiltskin }}"
 var classast = parseOuter(classtest);
 console.log("Input string: "+classtest);
 console.log(printASTIndent(classast));
 console.log(evalWML(classast,env));
+*/
+
+var str = "{: fct1 | arg1 | arg2 | This is body {{param}} :}"
+console.log("Input string: " + str);
+var astt = parseOuter(str);
+evalOuter(astt);
+
+
 

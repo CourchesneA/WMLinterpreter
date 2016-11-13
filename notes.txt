@@ -17,3 +17,14 @@ INNERDTEXT
 templateInvoc
 TParam
 next
+
+/*REMOVED - found a new way to extract body
+    var dtextarray;
+    function addParamsToArray(ast,env){      //This function will evaluate every param/body (dtext) and put it in array
+        if(ast == null){
+            return;
+        }
+        dtextarray.push(evalDefinitionText(ast.dtext,env));
+        addParamsToArray(ast.next,env);
+        //We will have everything in an array, last one will be body
+    }*/
