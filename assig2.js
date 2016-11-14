@@ -516,16 +516,52 @@ function lookup(name,env){      //Done
 }
 
 function evalWML(ast,env){
+    
+    //Create env if there is none
+    if (env == null || env == undefined) {
+        env = createEnv(env);   //If no environment was passed, create a new one
+        console.log("Created new env");
+    }
+    evalTemplateDef(parseOuter("{:#ift|thenpart|elsepart|{{{thenpart}}}:}").templatedef,env)
+    evalTemplateDef(parseOuter("{:#iff|thenpart|elsepart|{{{elsepart}}}:}").templatedef,env)
+    /*//Add pre-made function to the env
+    //#ift
+    env.bindings["#ift"] = {
+        //return param 1
+        params: ["thenpart","elsepart"],
+        body: {
+            name: "tparam",
+            pname:"thenpart"
+        },
+        env: env
+    }
+    //#iff
+    env.bindings["#iff"] = {
+        //return param 2
+        params: ["thenpart","elsepart"],
+        body: {
+            name: "tparam",
+            pname: "elsepart"
+        },
+        env: env
+    }
+    //#ifeq
+    env.bindings["#ifeq"] = {
+
+    }
+    //#expr
+    env.bindings["#expr"] = {
+        //Eval param 1 within JS and return
+        params: ["expression"],
+        body: eval("expression"),
+        env: env
+    }*/
     return evalOuter(ast,env);
 }
 
 function evalOuter(ast,env){
     if(ast == null){    //Return empty string if no more OUTERTEXT
         return "";
-    }
-    if (env == null || env == undefined) {
-        env = createEnv(env);   //If no environment was passed, create a new one
-        console.log("Created new env");
     }
 
     if(ast.templateinvocation != null){
@@ -584,8 +620,25 @@ function evalTemplateInvoc(ast, env) {
     var newenv = createEnv(env);
     //eval the name ->  String
     var invocname = evalInnerText(ast.itext);
-    //eval each of the args in an array
     var argsarray = [];
+    //Here handle if, ifeq and expr
+    if(invocname.charAt(0) == '#'){
+        if(invocname.startsWith("#ifeq:")){
+            //TODO
+        }else if(invocname.startsWith("#if:")){
+            if(invocname.charAt(4)==""){    //Condition is true, all a pre-made function that return first arg
+                invocname = "#iff"
+            }else {
+                invocname = "#ift"
+            }
+        }else if(invocname.startsWith("#expr")){
+            //Register function as #expr and push everything else as an arg
+            var exp = invocname.slice(6);
+            invocname = "#expr";
+            argsarray.push(exp);
+        }
+    }
+    //eval each of the args an put the str in an array
     function registerArgs(ast){
         if(ast == null){
             return;
@@ -596,6 +649,10 @@ function evalTemplateInvoc(ast, env) {
     registerArgs(ast.targs);
     //lookup the name in env
     var foundFunction = lookup(invocname,env);
+    if (foundFunction == null){
+        //console.log("\n"+invocname+" not found in environment");
+        return;
+    }
     // Find list of params and create bindings to args
     for (var i in foundFunction.params){   //For each param add a binding to it in the new environment
         if(argsarray.length == 0) {
@@ -698,12 +755,14 @@ console.log(printASTIndent(ast2));
 */
 
 
-var classtest = "{: hello | you | Hi there <b> {{{ you }}} </b> :} \n {{ hello | Runpelstiltskin }}"
+var classtest = "{{#if:|this|notthat}}"
+//var classtest = "{:fct | arg :}"
 var classast = parseOuter(classtest);
 console.log("Input string: "+classtest);
 console.log(printASTIndent(classast));
 var t = evalWML(classast);
 console.log(t);
+
 
 /*
 var str = "{: fct1 | arg1 | arg2 | This is body {{param}} :}"
