@@ -558,7 +558,17 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
             return null;    //Error occured
         }
         if(ast.name == "dparams" && ast.next == null && ast.dtext != null){
-            return ast.dtext;
+            //we want the last dtext also
+            function getdtext(dtext){
+                if(dtext.templatedef!=null){
+                    evalTemplateDef(dtext.templatedef,env);
+                }
+                if(dtext.next==null){
+                    return dtext;
+                }
+                return getdtext(dtext.next);
+            }
+            return getdtext(ast.dtext);
         }else{
             return getBody(ast.next);
         }
@@ -579,7 +589,7 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
         env: env        //Return the environment passed, in which the function was defined
     }
          //Always return empty string
-  return "";    //How can tdef return a string ? / How is passed the env    ->  write to parent env
+  return "";
 }
 
 function evalTemplateInvoc(ast, env) {
@@ -694,12 +704,11 @@ function evalTemplateParam(ast, env) {  //The function that call it should conta
     return lookup(ast.pname,env);   //Lookup the param in the env
 }
 
-var classtest = "{{#expr|3+5*45}}"
+var classtest = "{:foo|x|{:funcOne|{{{x}}}:}{:funcTwo|x|{{funcOne}}:}{{funcTwo|dynamic}}:}{{foo|static}}"
 //var classtest = "{:fct | arg :}"
 var classast = parseOuter(classtest);
 console.log("Input string: "+classtest);
 console.log(printASTIndent(classast));
 var t = evalWML(classast);
-console.log(eval("3+5"));
 console.log(t);
 
