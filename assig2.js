@@ -522,40 +522,11 @@ function evalWML(ast,env){
         env = createEnv(env);   //If no environment was passed, create a new one
         console.log("Created new env");
     }
-    evalTemplateDef(parseOuter("{:#ift|thenpart|elsepart|{{{thenpart}}}:}").templatedef,env)
-    evalTemplateDef(parseOuter("{:#iff|thenpart|elsepart|{{{elsepart}}}:}").templatedef,env)
-    /*//Add pre-made function to the env
-    //#ift
-    env.bindings["#ift"] = {
-        //return param 1
-        params: ["thenpart","elsepart"],
-        body: {
-            name: "tparam",
-            pname:"thenpart"
-        },
-        env: env
-    }
-    //#iff
-    env.bindings["#iff"] = {
-        //return param 2
-        params: ["thenpart","elsepart"],
-        body: {
-            name: "tparam",
-            pname: "elsepart"
-        },
-        env: env
-    }
-    //#ifeq
-    env.bindings["#ifeq"] = {
+    //Here add #if #ifeq #expr to the env
+    evalTemplateDef(parseOuter("{:#if|cond|thenpart|elsepart| :}").templatedef,env)
+    evalTemplateDef(parseOuter("{:#ifeq|a|b|thenpart|elsepart| :}").templatedef,env)
+    evalTemplateDef(parseOuter("{:#expr|exp| :}").templatedef,env)
 
-    }
-    //#expr
-    env.bindings["#expr"] = {
-        //Eval param 1 within JS and return
-        params: ["expression"],
-        body: eval("expression"),
-        env: env
-    }*/
     return evalOuter(ast,env);
 }
 
@@ -621,23 +592,7 @@ function evalTemplateInvoc(ast, env) {
     //eval the name ->  String
     var invocname = evalInnerText(ast.itext);
     var argsarray = [];
-    //Here handle if, ifeq and expr
-    if(invocname.charAt(0) == '#'){
-        if(invocname.startsWith("#ifeq:")){
-            //TODO
-        }else if(invocname.startsWith("#if:")){
-            if(invocname.charAt(4)==""){    //Condition is true, all a pre-made function that return first arg
-                invocname = "#iff"
-            }else {
-                invocname = "#ift"
-            }
-        }else if(invocname.startsWith("#expr")){
-            //Register function as #expr and push everything else as an arg
-            var exp = invocname.slice(6);
-            invocname = "#expr";
-            argsarray.push(exp);
-        }
-    }
+ 
     //eval each of the args an put the str in an array
     function registerArgs(ast){
         if(ast == null){
@@ -658,7 +613,25 @@ function evalTemplateInvoc(ast, env) {
         if(argsarray.length == 0) {
             return
         }
-        newenv.bindings[foundFunction.params[i]] = argsarray.shift();
+        newenv.bindings[foundFunction.params[i]] = argsarray[i];   //.shift
+    }
+    //Catch pre-made function
+    if(invocname.charAt(0)=='#'){
+        if(invocname=="#if"){
+            if(argsarray[0]==""){
+                return argsarray[1];
+            }else{
+                return argsarray[2];
+            }
+        }else if(invocname=="#ifeq"){
+            if(argsarray[0]==argsarray[1]){
+                return argsarray[2];
+            }else{
+                return argsarray[3];
+            }
+        }else if(invocname=="#expr"){
+            return eval(argsarray[0]);
+        }
     }
     //Evaluate the body in the new environment
     return evalDefinitionText(foundFunction.body,newenv);
@@ -720,58 +693,13 @@ function evalTemplateParam(ast, env) {  //The function that call it should conta
 
     return lookup(ast.pname,env);   //Lookup the param in the env
 }
-/*
-var e1 = {
-    name: 125435,
-    parent: null,
-    bindings: {
-        a: "test",
-        b: "test2",
-        c: "test3"
-    }
-}
 
-var e2 = {
-    name: 369549,
-    parent: e1,
-    bindings: {
-        d: "test4"
-    }
-}
-
-console.log(lookup("d",e2));
-*/
-
-/*var teststr = "{: definition | arg1 | body {{{arg1}}} :}";
-//var teststr = "some outer text\n-----------------\n{: definition | body :}\n-----------------\n{:definition|arg1|arg2| body :}\n-----------------"
-var ast = parseOuter(teststr);
-console.log("Input string: "+teststr);
-console.log(printASTIndent(ast));
-
-var teststr2 = "{{ definition | ydob }}"
-var ast2 = parseOuter(teststr2);
-console.log("Input string 2: "+teststr2);
-console.log(printASTIndent(ast2));
-*/
-
-
-var classtest = "{{#if:|this|notthat}}"
+var classtest = "{{#expr|3+5*45}}"
 //var classtest = "{:fct | arg :}"
 var classast = parseOuter(classtest);
 console.log("Input string: "+classtest);
 console.log(printASTIndent(classast));
 var t = evalWML(classast);
+console.log(eval("3+5"));
 console.log(t);
-
-
-/*
-var str = "{: fct1 | arg1 | arg2 | This is body {{param}} :}"
-console.log("Input string: " + str);
-var astt = parseOuter(str);
-evalOuter(astt);
-*/
-/*
-var str3 = "{{ Hello | Rumpelstiltskin }}"
-console.log(printASTIndent(parseOuter(str3)));
-*/
 
