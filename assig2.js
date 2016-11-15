@@ -433,6 +433,105 @@ function parseTParam(s) {
     return obj;
 }
 
+// ------------------Stringify----------------------
+// Convert a closure (template binding) into a serialized string.
+// This is assumed to be an object with fields params, body, env.
+function stringify(b) {
+    // We'll need to keep track of all environments seen.  This
+    // variable maps environment names to environments.
+    var envs = {};
+    // A function to gather all environments referenced.
+    // to convert environment references into references to their
+    // names.
+    function collectEnvs(env) {
+        // Record the env, unless we've already done so.
+        if (envs[env.name])
+            return;
+        envs[env.name] = env;
+        // Now go through the bindings and look for more env references.
+        for (var b in env.bindings) {
+            var c = env.bindings[b];
+            if (c!==null && typeof(c)==="object") {
+                if ("env" in c) {
+                    collectEnvs(c.env);
+                }
+            }
+        }
+        if (env.parent!==null)
+            collectEnvs(env.parent);
+    }
+    // Ok, first step gather all the environments.
+    collectEnvs(b.env);
+    // This is the actual structure we will serialize.
+    var thunk = { envs:envs ,
+                  binding:b
+                };
+    // And serialize it.  Here we use a feature of JSON.stringify, which lets us
+    // examine the current key:value pair being serialized, and override the
+    // value.  We do this to convert environment references to environment names,
+    // in order to avoid circular references, which JSON.stringify cannot handle.
+    var s = JSON.stringify(thunk,function(key,value) {
+        if ((key=='env' || key=='parent') && typeof(value)==='object' && value!==null && ("name" in value)) {
+            return value.name;
+        }
+        return value;
+    });
+    return s;
+}
+
+// Convert a serialized closure back into an appropriate structure.
+function unstringify(s) {
+    var envs;
+    // A function to convert environment names back to objects (well, pointers).
+    function restoreEnvs(env) {
+        // Indicate that we're already restoring this environmnet.
+        env.unrestored = false;
+        // Fixup parent pointer.
+        if (env.parent!==null && typeof(env.parent)==='number') {
+            env.parent = envs[env.parent];
+            // And if parent is unrestored, recursively restore it.
+            if (env.parent.unrestored)
+                restoreEnvs(env.parent);
+        }
+        // Now, go through all the bindings.
+        for (var b in env.bindings) {
+            var c = env.bindings[b];
+            // If we have a template binding, with an unrestored env field
+            if (c!==null && typeof(c)==='object' && c.env!==null && typeof(c.env)==='number') {
+                // Restore the env pointer.
+                c.env = envs[c.env];
+                // And if that env is not restored, fix it too.
+                if (c.env.unrestored)
+                    restoreEnvs(c.env);
+            }
+        }
+    }
+    var thunk;
+    try {
+        thunk = JSON.parse(s);
+        // Some validation that it is a thunk, and not random text.
+        if (typeof(thunk)!=='object' ||
+            !("binding" in thunk) ||
+            !("envs" in thunk))
+            return null;
+
+        // Pull out our set of environments.
+        envs = thunk.envs;
+        // Mark them all as unrestored.
+        for (var e in envs) {
+            envs[e].unrestored = true;
+        }
+        // Now, recursively, fixup env pointers, starting from
+        // the binding env.
+        thunk.binding.env = envs[thunk.binding.env];
+        restoreEnvs(thunk.binding.env);
+        // And return the binding that started it all.
+        return thunk.binding;
+    } catch(e) {
+        // A failure in unparsing it somehow.
+        return null;
+    }
+}
 //  -----------------Helpers-------------------------
 
 function printASTIndent(node, tabVal){
@@ -509,7 +608,7 @@ function lookup(name,env){      //Done
     }
     //check parent
     if(env.parent == null || env.parent == undefined){
-        console.log("not found in environment")
+        //console.log("DEBUG: not found in environment")
         return null;
     }
     return lookup(name,env.parent);
@@ -520,13 +619,12 @@ function evalWML(ast,env){
     //Create env if there is none
     if (env == null || env == undefined) {
         env = createEnv(env);   //If no environment was passed, create a new one
-        console.log("Created new env");
+        //console.log("DEBUG: Created new env");
     }
     //Here add #if #ifeq #expr to the env
     evalTemplateDef(parseOuter("{:#if|cond|thenpart|elsepart| :}").templatedef,env)
     evalTemplateDef(parseOuter("{:#ifeq|a|b|thenpart|elsepart| :}").templatedef,env)
     evalTemplateDef(parseOuter("{:#expr|exp| :}").templatedef,env)
-
     return evalOuter(ast,env);
 }
 
@@ -547,6 +645,7 @@ function evalOuter(ast,env){
 }
 
 function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env (where is was defined)}
+
     if(ast == null){
         return "";
     }
@@ -554,11 +653,11 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
     var params = [];
     function getBody(ast){  //Take a dparams node and return the dtext of the last linked dparams node
         if(ast == null){
-            console.log("Error occured, no body found");
+            console.log("ERROR, no body found");
             return null;    //Error occured
         }
         if(ast.name == "dparams" && ast.next == null && ast.dtext != null){
-            //we want the last dtext also
+            /*//we want the last dtext also
             function getdtext(dtext){
                 if(dtext.templatedef!=null){
                     evalTemplateDef(dtext.templatedef,env);
@@ -568,7 +667,8 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
                 }
                 return getdtext(dtext.next);
             }
-            return getdtext(ast.dtext);
+            return getdtext(ast.dtext);*/
+            return ast.dtext;
         }else{
             return getBody(ast.next);
         }
@@ -582,13 +682,27 @@ function evalTemplateDef(ast,env){  //add binding {params[], body: ASTnode, env 
     }
     var funcname = evalDefinitionText(ast.dtext,env);   // Evaluate the name
     registerParams(ast.dparams);
-   //add the function to parent env
-    env.bindings[funcname] = {    //bind the function
+    //create the function object
+    var funcobj ={    //bind the function
         params: params,
         body: getBody(ast.dparams),
         env: env        //Return the environment passed, in which the function was defined
     }
-         //Always return empty string
+
+    //Here handle Closure (Question 4)
+    if(funcname.charAt(0)=='`'){
+        if(funcname.length == 1){
+            //dont add bindings, only return closure
+            return stringify(funcobj);
+        }else{
+            funcname = funcname.substr(1);      //remove the backtick in the name
+            env.bindings[funcname] = funcobj;
+            return stringify(funcobj);
+        }
+    }
+    //add the function to parent env
+    env.bindings[funcname] = funcobj;
+
   return "";
 }
 
@@ -600,7 +714,7 @@ function evalTemplateInvoc(ast, env) {
     //Create a new environment
     var newenv = createEnv(env);
     //eval the name ->  String
-    var invocname = evalInnerText(ast.itext);
+    var invocname = evalInnerText(ast.itext,env);
     var argsarray = [];
  
     //eval each of the args an put the str in an array
@@ -612,10 +726,16 @@ function evalTemplateInvoc(ast, env) {
         registerArgs(ast.next)    //register next params
     }
     registerArgs(ast.targs);
-    //lookup the name in env
-    var foundFunction = lookup(invocname,env);
+    //Here handle closure string for q4:    If it is a closure then unstringify to get a function, else lookup the function
+    if(invocname.charAt(0) == '{' && invocname.charAt(invocname.length-1) == '}'){
+        var foundFunction = unstringify(invocname);
+    }else{
+        //lookup the name in env
+        var foundFunction = lookup(invocname,env);
+    }
+    
     if (foundFunction == null){
-        //console.log("\n"+invocname+" not found in environment");
+        console.log("ERROR: function \""+invocname+"\" not found in environment");
         return;
     }
     // Find list of params and create bindings to args
@@ -623,7 +743,7 @@ function evalTemplateInvoc(ast, env) {
         if(argsarray.length == 0) {
             return
         }
-        newenv.bindings[foundFunction.params[i]] = argsarray[i];   //.shift
+        newenv.bindings[foundFunction.params[i]] = argsarray[i];
     }
     //Catch pre-made function
     if(invocname.charAt(0)=='#'){
@@ -665,11 +785,11 @@ function evalInnerText(ast, env) {
         return evalTemplateInvoc(ast.templateinvocation,env) + evalInnerText(ast.next,env);
     }else if (ast.templatedef != null){
         return evalTemplateDef(ast.templatedef,env) + evalInnerText(ast.next,env);
-    }else if (ast.tparm != null){
+    }else if (ast.tparam != null){
         return evalTemplateParam(ast.tparam,env) + evalInnerText(ast.next,env);
     }
 
-    return "A string";
+    return "Error1";
 }
 function evalDefinitionText(ast, env) {
     if(ast == null){
@@ -681,12 +801,12 @@ function evalDefinitionText(ast, env) {
     } else if (ast.templateinvocation != null) {
         return evalTemplateInvoc(ast.templateinvocation,env) + evalDefinitionText(ast.next, env);
     } else if (ast.templatedef != null) {
-        return eval(ast.templatedef,env) + evalDefinitionText(ast.next, env);
+        return evalTemplateDef(ast.templatedef,env) + evalDefinitionText(ast.next, env);
     } else if (ast.tparam != null) {
         return evalTemplateParam(ast.tparam,env) + evalDefinitionText(ast.next, env);
     }
 
-    return "A string";
+    return "Error2";
 }
 function evalDefinitionParam(ast, env) {
     if(ast == null){
@@ -704,11 +824,20 @@ function evalTemplateParam(ast, env) {  //The function that call it should conta
     return lookup(ast.pname,env);   //Lookup the param in the env
 }
 
-var classtest = "{:foo|x|{:funcOne|{{{x}}}:}{:funcTwo|x|{{funcOne}}:}{{funcTwo|dynamic}}:}{{foo|static}}"
-//var classtest = "{:fct | arg :}"
+//var classtest = "{:foo|x|{:funcOne|{{{x}}}:}{:funcTwo|x|{{funcOne}}:}{{funcTwo|dynamic}}:}{{foo|static}}"
+var classtest = "{:bar|x|{:foo|{{{x}}}:}{{foo}}:}{{bar|This works!}}"
 var classast = parseOuter(classtest);
 console.log("Input string: "+classtest);
-console.log(printASTIndent(classast));
+//console.log(printASTIndent(classast));
 var t = evalWML(classast);
 console.log(t);
 
+/*
+var aast = parseOuter("{{test|one|two}}")
+var obj = {
+    params: ["arg1","arg2"],
+    body: aast,
+    env: createEnv(null)
+}
+console.log(stringify(obj));
+*/
