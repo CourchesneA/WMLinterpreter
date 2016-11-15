@@ -561,31 +561,7 @@ function printASTIndent(node, tabVal){
 }
 
 //  -----------------Assignment start----------------
-
-// parseOuter(s)
-
-// Question 1
-// Create environment
-//  -Random unique name
-//  -Envirnment bindings
-//  -Parent environment object
-/*
-    { name: ,
-    bindings: { ... },
-    parent: }
-
-    createEnv(parent)   which creates a new environment
-    lookup(name,env)     which returns the first binding value for binding key name. This function
-                        searches through the given environment and then parents, returning null if no binding is found
-*/
-
-/*
-Binding closure template:
-e = createEnv(parent)
-return function{
-    this can access e
-}
-*/
+//      Question 1
 
 function createEnv(parent){
     if(parent == undefined){
@@ -613,6 +589,8 @@ function lookup(name,env){      //Done
     }
     return lookup(name,env.parent);
 }
+
+//  Question 2,3,4
 
 function evalWML(ast,env){
     
@@ -824,13 +802,35 @@ function evalTemplateParam(ast, env) {  //The function that call it should conta
     return lookup(ast.pname,env);   //Lookup the param in the env
 }
 
+
+//---------------Question 5------------
+//create an environment with pre-made functions
+var env = createEnv(null);
+//define premade function in case we need them before they are usually defined
+evalTemplateDef(parseOuter("{:#if|cond|thenpart|elsepart| :}").templatedef,env);
+evalTemplateDef(parseOuter("{:#ifeq|a|b|thenpart|elsepart| :}").templatedef,env);
+evalTemplateDef(parseOuter("{:#expr|exp| :}").templatedef,env);
+//first define functions
+//makeN evaluate n: if n==0, return X, else return a closure of makeN(n-1)
+evalTemplateDef(parseOuter("{:makeN|n| {{#ifeq|{{{n}}}|0|{{{x}}}|{:`|x|{{makeN| {{#expr|{{{n}}}-1 }} }}:} }} :}").templatedef,env); //makeN
+evalTemplateDef(parseOuter("{:succ|n|{{makeN|{{#expr|{{{n}}}+1}} }}:}").templatedef,env); //Successor function
+evalTemplateDef(parseOuter("{:iszero|n|{{#ifeq|{{makeN|n}}|{{{x}}}||false}}:}").templatedef,env); //isZero return empty string if true
+evalTemplateDef(parseOuter("{:plus|n|m|{{n| {{succ|{{{m}}} }} }} :}").templatedef,env); //plus
+//prefixSum(number,sum)
+evalTemplateDef(parseOuter("{:prefixSum|n|s|{{#if|{{iszero|{{makeN|n}} }}|{{{s}}}|{{prefixSum|{{#expr|{{{n}}}-1}}|{{plus|{{{s}}}|{{{n}}} }} }} }}:}").templatedef,env);
+evalOuter(parseOuter("{{prefixSum|5|0}}"))  //Example to calculate prefix sum of 5
+
+//-------------------------------------
+
 //var classtest = "{:foo|x|{:funcOne|{{{x}}}:}{:funcTwo|x|{{funcOne}}:}{{funcTwo|dynamic}}:}{{foo|static}}"
-var classtest = "{:bar|x|{:foo|{{{x}}}:}{{foo}}:}{{bar|This works!}}"
+var classtest = "{:greaterThan|x|y|{{#ifeq|{{#expr|{{{x}}}>{{{y}}} }}|true|{{{x}}}|{{{y}}} }}:}{:square|x|{:mult|x|y|{{#expr|{{{x}}}*{{{y}}} }}:}{{mult|{{{x}}}|{{{x}}} }}:}{:squareOfGreater|x|z|{{square|{{greaterThan|{{{x}}}|{{{z}}} }} }}:}The square of the greater of these two numbers (4 and 10) is: {{squareOfGreater|4|10}}"
 var classast = parseOuter(classtest);
 console.log("Input string: "+classtest);
 //console.log(printASTIndent(classast));
 var t = evalWML(classast);
 console.log(t);
+
+
 
 /*
 var aast = parseOuter("{{test|one|two}}")
